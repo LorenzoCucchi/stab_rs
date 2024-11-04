@@ -1,278 +1,15 @@
 use hdf5::File as Hdf5File;
-use ndarray::Array;
 use num_complex::{Complex, ComplexFloat};
 use pyo3::prelude::*;
-use serde_json::Value;
 use std::f64::consts::PI;
-use std::fs::File;
-use std::io::Read;
 use std::vec;
 
+mod aero;
+mod geometry;
+
+use aero::Aero;
+use geometry::Geometry;
 const GRAV: f64 = 9.80665;
-
-#[pyclass]
-#[derive(Clone)]
-struct Geometry {
-    length: f64,
-    diameter: f64,
-    area: f64,
-    in_x: f64,
-    in_y: f64,
-    xcg: f64,
-    mass: f64,
-    mass_grain: f64,
-}
-
-#[pymethods]
-impl Geometry {
-    #[new]
-    fn new(length: f64, diameter: f64, in_x: f64, in_y: f64, xcg: f64, mass_grain: f64) -> Self {
-        let area = PI * diameter.powf(2.0) / 4.0;
-        let mass = mass_grain / 15432.4;
-        Geometry {
-            length,
-            diameter,
-            area,
-            in_x,
-            in_y,
-            xcg,
-            mass,
-            mass_grain,
-        }
-    }
-
-    pub fn print(&self) {
-        println!("Length: {} [m]", self.length);
-        println!("Diameter: {} [m]", self.diameter);
-        println!("Area: {} [m2]", self.area);
-        println!("Inertia X: {}", self.in_x);
-        println!("Inertia Y: {}", self.in_y);
-        println!("XCG: {} [m]", self.xcg);
-        println!("Mass: {} [Kg]", self.mass);
-        println!("Mass Grain: {} [gr]", self.mass_grain);
-    }
-}
-
-#[pyclass]
-#[derive(Clone)]
-struct Aero {
-    path: String,
-    alpha: ndarray::Array1<f64>,
-    mach: ndarray::Array1<f64>,
-    cd_fit: ndarray::Array2<f64>,
-    cna_fit: ndarray::Array2<f64>,
-    cma_fit: ndarray::Array2<f64>,
-    cmadcmq_fit: ndarray::Array1<f64>,
-    cnpa_fit: ndarray::Array2<f64>,
-    cllp_fit: ndarray::Array1<f64>,
-    cd: ndarray::Array1<f64>,
-    cna: ndarray::Array1<f64>,
-    cma: ndarray::Array1<f64>,
-    cnpa: ndarray::Array1<f64>,
-    cmadcmq: f64,
-    cllp: f64,
-}
-
-#[pymethods]
-impl Aero {
-    #[new]
-    pub fn new(path: String) -> Self {
-        let is_hdf5 = path.ends_with(".h5") || path.ends_with(".hdf5");
-        let is_json = path.ends_with(".json");
-
-        if is_hdf5 {
-            let file = Hdf5File::open(&path).expect("Failed to open HDF5 file");
-
-            let alpha: ndarray::Array1<f64> = file.dataset("alpha").unwrap().read_1d().unwrap();
-            let mach: ndarray::Array1<f64> = file.dataset("mach").unwrap().read().unwrap();
-            let cd_fit: ndarray::Array2<f64> = file.dataset("CD_FIT").unwrap().read().unwrap();
-            let cna_fit: ndarray::Array2<f64> = file.dataset("CNA_FIT").unwrap().read().unwrap();
-            let cma_fit: ndarray::Array2<f64> = file.dataset("CMA_FIT").unwrap().read().unwrap();
-            let cnpa_fit: ndarray::Array2<f64> = ndarray::Array2::zeros([1, 1]);
-            let cmadcmq_fit: ndarray::Array1<f64> =
-                file.dataset("CMADCMQ").unwrap().read().unwrap();
-            let cllp_fit: ndarray::Array1<f64> = file.dataset("CLLP_FIT").unwrap().read().unwrap();
-
-            Aero {
-                path,
-                alpha,
-                mach,
-                cd_fit,
-                cna_fit,
-                cma_fit,
-                cnpa_fit,
-                cmadcmq_fit,
-                cllp_fit,
-                cd: Array::zeros(3),
-                cna: Array::zeros(3),
-                cma: Array::zeros(3),
-                cnpa: Array::zeros(2),
-                cmadcmq: 0.0,
-                cllp: 0.0,
-            }
-        } else if is_json {
-            let mut file = File::open(&path).expect("Failed to open JSON file");
-            let mut content = String::new();
-            file.read_to_string(&mut content)
-                .expect("Failed to read JSON file");
-
-            let json_data: Value = serde_json::from_str(&content).expect("Failed to parse JSON");
-
-            let mach_values: Vec<f64> = json_data["mach"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|val| val.as_f64().unwrap())
-                .collect();
-
-            let mach = Array::from_vec(mach_values.clone());
-
-            let alpha = Array::from_vec(
-                json_data["alpha"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .map(|val| val.as_f64().unwrap())
-                    .collect(),
-            );
-
-            let cd_fit = Array::from_shape_vec(
-                (mach_values.len(), alpha.len_of(ndarray::Axis(0))),
-                json_data["cd_fit"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .flat_map(|row| row.as_array().unwrap().iter().map(|v| v.as_f64().unwrap()))
-                    .collect(),
-            )
-            .unwrap();
-
-            let cna_fit = Array::from_shape_vec(
-                (mach_values.len(), alpha.len_of(ndarray::Axis(0))),
-                json_data["cna_fit"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .flat_map(|row| row.as_array().unwrap().iter().map(|v| v.as_f64().unwrap()))
-                    .collect(),
-            )
-            .unwrap();
-
-            let cma_fit = Array::from_shape_vec(
-                (mach_values.len(), alpha.len_of(ndarray::Axis(0))),
-                json_data["cma_fit"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .flat_map(|row| row.as_array().unwrap().iter().map(|v| v.as_f64().unwrap()))
-                    .collect(),
-            )
-            .unwrap();
-
-            let cnpa_fit = Array::from_shape_vec(
-                (mach_values.len(), alpha.len_of(ndarray::Axis(0))),
-                json_data["cnpa_fit"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .flat_map(|row| row.as_array().unwrap().iter().map(|v| v.as_f64().unwrap()))
-                    .collect(),
-            )
-            .unwrap();
-
-            let cmadcmq_fit = Array::from_vec(
-                json_data["cmadcmq_fit"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .map(|v| v.as_f64().unwrap())
-                    .collect(),
-            );
-
-            let cllp_fit = Array::from_vec(
-                json_data["cllp_fit"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .map(|v| v.as_f64().unwrap())
-                    .collect(),
-            );
-
-            Aero {
-                path,
-                alpha,
-                mach,
-                cd_fit,
-                cna_fit,
-                cma_fit,
-                cnpa_fit,
-                cmadcmq_fit,
-                cllp_fit,
-                cd: Array::zeros(3),
-                cna: Array::zeros(3),
-                cma: Array::zeros(3),
-                cnpa: Array::zeros(3),
-                cmadcmq: 0.0,
-                cllp: 0.0,
-            }
-        } else {
-            panic!("Unsupported file format");
-        }
-    }
-
-    fn interp1(&mut self, mach: f64) {
-        let n = self.mach.len();
-        let mut low_ind = 0;
-        let mut upp_ind = n - 1;
-
-        for i in 0..n - 1 {
-            if self.mach[i] <= mach && mach <= self.mach[i + 1] {
-                low_ind = i;
-                upp_ind = i + 1;
-                break;
-            }
-        }
-
-        let t = (mach - self.mach[low_ind]) / (self.mach[upp_ind] - self.mach[low_ind]);
-
-        self.cd =
-            &self.cd_fit.row(low_ind) + t * (&self.cd_fit.row(upp_ind) - &self.cd_fit.row(low_ind));
-        self.cna = &self.cna_fit.row(low_ind)
-            + t * (&self.cna_fit.row(upp_ind) - &self.cna_fit.row(low_ind));
-        self.cma = &self.cma_fit.row(low_ind)
-            + t * (&self.cma_fit.row(upp_ind) - &self.cma_fit.row(low_ind));
-        self.cnpa = &self.cnpa_fit.row(low_ind)
-            + t * (&self.cnpa_fit.row(upp_ind) - &self.cnpa_fit.row(low_ind));
-        self.cmadcmq = &self.cmadcmq_fit[low_ind]
-            + t * (&self.cmadcmq_fit[upp_ind] - &self.cmadcmq_fit[low_ind]);
-        self.cllp =
-            &self.cllp_fit[low_ind] + t * (&self.cllp_fit[upp_ind] - &self.cllp_fit[low_ind]);
-    }
-
-    fn update_coeffs(&mut self, mach: f64) {
-        self.interp1(mach);
-    }
-
-    fn get_cd(&mut self, alpha: f64) -> f64 {
-        let cd = self.cd[0] + self.cd[1] * alpha.powf(2.0) + self.cd[2] * alpha.powf(4.0);
-        return cd;
-    }
-
-    fn get_cna(&mut self, alpha: f64) -> f64 {
-        let cn = self.cna[0] + self.cna[1] * alpha.powf(2.0) + self.cna[2] * alpha.powf(4.0);
-        return cn;
-    }
-
-    fn get_cma(&mut self, alpha: f64) -> f64 {
-        let cm = self.cma[0] + self.cma[1] * alpha.powf(2.0) + self.cma[2] * alpha.powf(4.0);
-        return cm;
-    }
-
-    fn get_cnpa(&mut self, alpha: f64) -> f64 {
-        let cnpa = self.cnpa[0] + self.cnpa[1] * alpha.powf(2.0);
-        return cnpa;
-    }
-}
 
 #[pyclass]
 #[derive(Clone)]
@@ -554,38 +291,36 @@ impl Simulation {
 
     fn run(&mut self) {
         self.init_vectors();
-        let j = Complex::new(0.0, 1.0);
+        let j: Complex<f64> = Complex::new(0.0, 1.0);
         let kx_2: f64 = self.geometry.mass * self.geometry.diameter.powf(2.0) / self.geometry.in_x;
         let ky_2: f64 = self.geometry.mass * self.geometry.diameter.powf(2.0) / self.geometry.in_y;
-        let inx_iny = self.geometry.in_x / self.geometry.in_y;
-        let diam = self.geometry.diameter;
+        let inx_iny: f64 = self.geometry.in_x / self.geometry.in_y;
+        let diam: f64 = self.geometry.diameter;
 
         self.update_aero(0, 0.0);
 
-        let mut P = inx_iny * ((self.vec_data.p_vec[0] * diam) / self.vec_data.vel_vec[0]);
-        let mut M = ky_2 * self.vec_data.cma[0];
-        let mut T = self.vec_data.cna[0];
-        let mut G = GRAV * diam * 0.0_f64.cos() / self.vec_data.vel_vec[0].powf(2.0);
-        let mut H = self.vec_data.cna[0] - self.vec_data.cd[0] - ky_2 * self.vec_data.cmadcmq[0];
+        let mut _p: f64 = inx_iny * ((self.vec_data.p_vec[0] * diam) / self.vec_data.vel_vec[0]);
+        let mut _m: f64 = ky_2 * self.vec_data.cma[0];
+        let mut _t: f64 = self.vec_data.cna[0];
+        let mut _g: f64 = GRAV * diam * 0.0_f64.cos() / self.vec_data.vel_vec[0].powf(2.0);
+        let mut _h: f64 =
+            self.vec_data.cna[0] - self.vec_data.cd[0] - ky_2 * self.vec_data.cmadcmq[0];
 
-        self.vec_data.sg_vec[0] = P.powf(2.0) / (4.0 * M);
-        self.vec_data.sd_vec[0] = 2.0 * T / H;
+        self.vec_data.sg_vec[0] = _p.powf(2.0) / (4.0 * _m);
+        self.vec_data.sd_vec[0] = 2.0 * _t / _h;
         self.vec_data.sg_lim_vec[0] =
             1.0 / (self.vec_data.p_vec[0] * (2.0 - self.vec_data.sd_vec[0]));
 
-        let eps = (1.0 - 1.0 / self.vec_data.sg_vec[0]).sqrt()
+        let eps: f64 = (1.0 - 1.0 / self.vec_data.sg_vec[0]).sqrt()
             * (self.delta_yaw.to_radians().sin())
             / (2.0 * (1.0 / inx_iny) - 1.0);
-        println!("{:?}", eps);
+
         let xi0 = eps.sin() * j.exp();
         let xi0_prime = j * ((self.roll_rate * diam) / self.init_vel) * xi0;
 
-        let mut delta_s = 0.0;
         let mut ttime = 0.0;
-        let mut kp = 0.0;
-        let mut s = 0.0;
         for i in 0..self.vec_data.sp_vec.len() {
-            s = self.vec_data.sp_vec[i];
+            let s = self.vec_data.sp_vec[i];
             if i == 0 {
                 self.vec_data.vel_vec[i] = self.init_vel;
                 self.update_aero(i, self.vec_data.alpha_tot_vec[0]);
@@ -593,10 +328,10 @@ impl Simulation {
                 self.vec_data.vel_vec[i] = self.vec_data.vel_vec[0]
                     * (-trapz(&self.vec_data.cd_adim[0..i], &self.vec_data.sp_vec[0..i])).exp();
 
-                delta_s = self.vec_data.sp_vec[i] - self.vec_data.sp_vec[i - 1];
+                let delta_s = self.vec_data.sp_vec[i] - self.vec_data.sp_vec[i - 1];
                 ttime = ttime + delta_s * diam / self.vec_data.vel_vec[i];
 
-                kp = -(kx_2 * self.vec_data.cllp_adim[i - 1] + self.vec_data.cd_adim[i - 1]);
+                let kp = -(kx_2 * self.vec_data.cllp_adim[i - 1] + self.vec_data.cd_adim[i - 1]);
 
                 self.vec_data.p_vec[i] = self.vec_data.vel_vec[i] * self.vec_data.p_vec[0]
                     / self.vec_data.vel_vec[0]
@@ -605,21 +340,21 @@ impl Simulation {
                 self.update_aero(i, self.vec_data.alpha_tot_vec[i - 1]);
             }
 
-            P = inx_iny * ((self.vec_data.p_vec[i] * diam) / self.vec_data.vel_vec[i]);
-            M = ky_2 * self.vec_data.cma_adim[i];
-            T = self.vec_data.cna_adim[i] + kx_2 * self.vec_data.cnpa_adim[i];
-            G = GRAV * diam * 0.0_f64.cos() / self.vec_data.vel_vec[i].powf(2.0);
-            H = self.vec_data.cna_adim[i]
+            _p = inx_iny * ((self.vec_data.p_vec[i] * diam) / self.vec_data.vel_vec[i]);
+            _m = ky_2 * self.vec_data.cma_adim[i];
+            _t = self.vec_data.cna_adim[i] + kx_2 * self.vec_data.cnpa_adim[i];
+            _g = GRAV * diam * 0.0_f64.cos() / self.vec_data.vel_vec[i].powf(2.0);
+            _h = self.vec_data.cna_adim[i]
                 - self.vec_data.cd_adim[i]
                 - ky_2 * self.vec_data.cmadcmq_adim[i];
 
-            self.vec_data.sg_vec[i] = P.powf(2.0) / (4.0 * M);
-            self.vec_data.sd_vec[i] = 2.0 * T / H;
+            self.vec_data.sg_vec[i] = _p.powf(2.0) / (4.0 * _m);
+            self.vec_data.sd_vec[i] = 2.0 * _t / _h;
             self.vec_data.sg_lim_vec[i] =
                 1.0 / (self.vec_data.sd_vec[i] * (2.0 - self.vec_data.sd_vec[i]));
 
             self.vec_data.dr_vec[i] = (j / ky_2
-                * (self.vec_data.p_vec[i] * G / 2.0)
+                * (self.vec_data.p_vec[i] * _g / 2.0)
                 * (self.vec_data.cna_adim[i] / self.vec_data.cma_adim[i])
                 * s.powf(2.0)
                 * (1.0
@@ -627,11 +362,11 @@ impl Simulation {
                     + 1.0 / 3.0 * (self.vec_data.cd_adim[i] * s).powf(2.0)))
             .re();
             self.trajectory(
-                P,
-                M,
-                T,
-                G,
-                H,
+                _p,
+                _m,
+                _t,
+                _g,
+                _h,
                 xi0.re(),
                 xi0.im(),
                 xi0_prime.re(),
@@ -806,15 +541,9 @@ fn trapz(y: &[f64], x: &[f64]) -> f64 {
         .sum()
 }
 
-#[pyfunction]
-fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
-    Ok((a + b).to_string())
-}
-
-/// A Python module implemented in Rust.
+/// stab_rs module
 #[pymodule]
 fn stab_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
     m.add_class::<Geometry>()?;
     m.add_class::<Simulation>()?;
     m.add_class::<Aero>()?;

@@ -29,7 +29,7 @@ class Aero:
     cna: np.ndarray
     cma: np.ndarray
     cnpa: np.ndarray
-    
+
     def new(path: str) -> Aero: ...
 
     def interp1(self, mach: float): ...
@@ -42,7 +42,8 @@ class Aero:
 
     def get_cma(self, alpha: float) -> float: ...
 
-    def get_cnpa(self, alpha:float) -> float: ...
+    def get_cnpa(self, alpha: float) -> float: ...
+
 
 class SimData:
     sp_vec: np.ndarray
