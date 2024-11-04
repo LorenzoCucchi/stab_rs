@@ -1,0 +1,17 @@
+[package]
+name = "stab_rs"
+version = "0.1.1"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "stab_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.22.5"
+hdf5 ={ package = "hdf5-metno", version = "0.9.2" }
+ndarray = "*"
+num-complex = "*"
+serde = { version = "*", features = ["derive"] }  # Enable the derive feature
+serde_json = "1.0"
