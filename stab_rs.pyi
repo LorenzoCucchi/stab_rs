@@ -1,6 +1,11 @@
 import numpy as np
 
 
+class NamedVec:
+    name: str
+    data: np.ndarray
+
+
 class Geometry:
     length: float
     diameter: float
@@ -11,8 +16,8 @@ class Geometry:
     mass: float
     mass_grain: float
 
-    def new(length: float, diameter: float, in_x: float, in_y: float,
-            xcg: float, mass_grain: float) -> Geometry: ...
+    def __init__(length: float, diameter: float, in_x: float, in_y: float,
+                 xcg: float, mass_grain: float) -> Geometry: ...
 
     def print(self): ...
 
@@ -30,7 +35,7 @@ class Aero:
     cma: np.ndarray
     cnpa: np.ndarray
 
-    def new(path: str) -> Aero: ...
+    def __init__(path: str) -> Aero: ...
 
     def interp1(self, mach: float): ...
 
@@ -46,26 +51,26 @@ class Aero:
 
 
 class SimData:
-    sp_vec: np.ndarray
-    vel_vec: np.ndarray
-    mach_vec: np.ndarray
-    p_vec: np.ndarray
-    sg_vec: np.ndarray
-    sd_vec: np.ndarray
-    sg_lim_vec: np.ndarray
-    dr_vec: np.ndarray
-    alpha_vec: np.ndarray
-    beta_vec: np.ndarray
-    alpha_tot_vec: np.ndarray
-    beta_r_vec: np.ndarray
-    lambda_f_vec: np.ndarray
-    lambda_s_vec: np.ndarray
-    fast_freq_vec: np.ndarray
-    slow_freq_vec: np.ndarray
-    cd: np.ndarray
-    cna: np.ndarray
-    cma: np.ndarray
-    cmqcmad: np.ndarray
+    sp_vec: NamedVec
+    vel_vec: NamedVec
+    mach_vec: NamedVec
+    p_vec: NamedVec
+    sg_vec: NamedVec
+    sd_vec: NamedVec
+    sg_lim_vec: NamedVec
+    dr_vec: NamedVec
+    alpha_vec: NamedVec
+    beta_vec: NamedVec
+    alpha_tot_vec: NamedVec
+    beta_r_vec: NamedVec
+    lambda_f_vec: NamedVec
+    lambda_s_vec: NamedVec
+    fast_freq_vec: NamedVec
+    slow_freq_vec: NamedVec
+    cd: NamedVec
+    cna: NamedVec
+    cma: NamedVec
+    cmqcmad: NamedVec
     def new() -> SimData: ...
 
 
@@ -85,8 +90,8 @@ class Simulation:
     vec_data: SimData
     aero_data: Aero
 
-    def new(geom: Geometry, aero_path: str, range: float, vel: float,
-            twist: float, delta_yaw: float, iter: int, temp: float, density: float) -> Simulation: ...
+    def __init__(geom: Geometry, aero_path: str, range: float, vel: float,
+                 twist: float, delta_yaw: float, iter: int, temp: float, density: float) -> Simulation: ...
 
     def sound_speed(temp: float) -> float: ...
 

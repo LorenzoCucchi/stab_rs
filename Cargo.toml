@@ -15,3 +15,4 @@ ndarray = "*"
 num-complex = "*"
 serde = { version = "*", features = ["derive"] }  # Enable the derive feature
 serde_json = "1.0"
+struct_iterable = "0.1.1"
