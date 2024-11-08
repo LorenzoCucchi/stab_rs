@@ -522,16 +522,6 @@ impl Simulation {
         let file = Hdf5File::create("sim_res.hdf5").unwrap();
 
         write_datasets!(file, self.vec_data);
-
-        // for (_, member) in self.vec_data.iter() {
-        //     let item = member.downcast_ref::<NamedVec>().unwrap();
-        //     file.new_dataset::<f64>()
-        //         .shape(item.data.len())
-        //         .create(item.name)
-        //         .unwrap()
-        //         .write(&item.data)
-        //         .unwrap();
-        // }
     }
 }
 
