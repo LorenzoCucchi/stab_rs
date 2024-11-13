@@ -16,7 +16,7 @@ use nalgebra::{Vector1, Vector3};
 use pyo3::prelude::*;
 use struct_iterable::Iterable;
 
-#[pyclass]
+#[pyclass(module = "stab_rs.stanag")]
 #[derive(Clone, Iterable)]
 struct SimData {
     // simulation states
@@ -69,7 +69,7 @@ impl SimData {
     }
 }
 
-#[pyclass]
+#[pyclass(module = "stab_rs.stanag")]
 pub struct Position {
     #[pyo3(get, set)]
     altitude: f64,
@@ -109,7 +109,8 @@ impl Clone for Position {
     }
 }
 
-#[pyclass]
+
+#[pyclass(module = "stab_rs.stanag")]
 struct Simulation {
     #[pyo3(get, set)]
     geometry: Geometry,
@@ -243,14 +244,16 @@ impl Simulation {
                 self.vec_data.time.append(&mut vec![time]);
             }
         }
+    }
 
+    fn write_results(&self) {
         let file = Hdf5File::create("sim_stanag.hdf5").unwrap();
 
         write_datasets!(file, self.vec_data)
     }
 }
 
-#[pymodule]
+#[pymodule(module = "stab_rs.stanag")]
 fn stanag(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Geometry>()?;
     m.add_class::<Position>()?;

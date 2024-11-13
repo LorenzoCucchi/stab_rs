@@ -109,8 +109,12 @@ impl OdeProblem<f64, 8> for Bullet {
 }
 
 pub fn gravity(pos: Vector3<f64>) -> Vector3<f64> {
-    let R = 6.356766 * 10e6;
-    -Vector3::new(pos[0] / R, 1.0 - 2.0 * pos[1] / R, pos[2] / R) * 9.80665
+    let radius = 6.356766 * 10e6;
+    -Vector3::new(
+        pos[0] / radius,
+        1.0 - 2.0 * pos[1] / radius,
+        pos[2] / radius,
+    ) * 9.80665
 }
 
 const OMEGA: f64 = 7.292115 * 10e-5;

@@ -1,4 +1,4 @@
-import stab_rs
+import stab_rs.linear as linear # type: ignore
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -14,9 +14,9 @@ daft = 0.004958
 
 tot_len = lnose+lcentr+laft
 
-geom = stab_rs.Geometry(tot_len, diam, ix, iy, xcg, 62)
+geom = linear.Geometry(tot_len, diam, ix, iy, xcg, 62)
 
-sim = stab_rs.Simulation(
+sim = linear.Simulation(
     geom, "for006_coeffs.hdf5", 100, 890, 7, 3, 30000, 298, 1.225)
 
 sim.run()
