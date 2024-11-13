@@ -1,10 +1,9 @@
 use crate::{
-    utils::{aero::Aero, custom_vec::*, geometry::Geometry},
+    utils::{aero::Aero, geometry::Geometry},
     write_datasets,
 };
 
-use core::net;
-use hdf5::{File as Hdf5File, Selection};
+use hdf5::File as Hdf5File;
 use num_complex::{Complex, ComplexFloat};
 use pyo3::prelude::*;
 use std::f64::consts::PI;
@@ -405,10 +404,8 @@ impl Simulation {
         self.vec_data.alpha_vec[i] = xi.re();
         self.vec_data.alpha_tot_vec[i] = (xi.im().powf(2.0) + xi.re().powf(2.0)).sqrt();
         self.vec_data.beta_r_vec[i] = ((p * g) / (m + j * p * t)).re();
-        self.vec_data.slow_freq_vec[i] =
-            (phi_s * self.vec_data.vel_vec[i]) / (2.0 * PI * d);
-        self.vec_data.fast_freq_vec[i] =
-            (phi_f * self.vec_data.vel_vec[i]) / (2.0 * PI * d);
+        self.vec_data.slow_freq_vec[i] = (phi_s * self.vec_data.vel_vec[i]) / (2.0 * PI * d);
+        self.vec_data.fast_freq_vec[i] = (phi_f * self.vec_data.vel_vec[i]) / (2.0 * PI * d);
         self.vec_data.lambda_s_vec[i] = lam_s.re();
         self.vec_data.lambda_f_vec[i] = lam_f.re();
     }
@@ -423,14 +420,12 @@ impl Simulation {
 
         self.update_aero(0, 0.0);
 
-        let mut _p: f64 =
-            inx_iny * ((self.vec_data.p_vec[0] * diam) / self.vec_data.vel_vec[0]);
+        let mut _p: f64 = inx_iny * ((self.vec_data.p_vec[0] * diam) / self.vec_data.vel_vec[0]);
         let mut _m: f64 = ky_2 * self.vec_data.cma[0];
         let mut _t: f64 = self.vec_data.cna[0];
         let mut _g: f64 = GRAV * diam * 0.0_f64.cos() / self.vec_data.vel_vec[0].powf(2.0);
-        let mut _h: f64 = self.vec_data.cna[0]
-            - self.vec_data.cd[0]
-            - ky_2 * self.vec_data.cmadcmq[0];
+        let mut _h: f64 =
+            self.vec_data.cna[0] - self.vec_data.cd[0] - ky_2 * self.vec_data.cmadcmq[0];
 
         self.vec_data.sg_vec[0] = _p.powf(2.0) / (4.0 * _m);
         self.vec_data.sd_vec[0] = 2.0 * _t / _h;
@@ -452,20 +447,14 @@ impl Simulation {
                 self.update_aero(i, self.vec_data.alpha_tot_vec[0]);
             } else {
                 self.vec_data.vel_vec[i] = self.vec_data.vel_vec[0]
-                    * (-trapz(
-                        &self.vec_data.cd_adim[0..i],
-                        &self.vec_data.sp_vec[0..i],
-                    ))
-                    .exp();
+                    * (-trapz(&self.vec_data.cd_adim[0..i], &self.vec_data.sp_vec[0..i])).exp();
 
                 let delta_s = self.vec_data.sp_vec[i] - self.vec_data.sp_vec[i - 1];
                 ttime = ttime + delta_s * diam / self.vec_data.vel_vec[i];
 
-                let kp = -(kx_2 * self.vec_data.cllp_adim[i - 1]
-                    + self.vec_data.cd_adim[i - 1]);
+                let kp = -(kx_2 * self.vec_data.cllp_adim[i - 1] + self.vec_data.cd_adim[i - 1]);
 
-                self.vec_data.p_vec[i] = self.vec_data.vel_vec[i]
-                    * self.vec_data.p_vec[0]
+                self.vec_data.p_vec[i] = self.vec_data.vel_vec[i] * self.vec_data.p_vec[0]
                     / self.vec_data.vel_vec[0]
                     * (-kp * self.vec_data.sp_vec[i]).exp();
 
@@ -513,8 +502,7 @@ impl Simulation {
     fn update_aero(&mut self, ind: usize, alpha: f64) {
         self.vec_data.mach_vec[ind] = self.vec_data.vel_vec[ind] / self.sound;
 
-        self.aero_data
-            .update_coeffs(self.vec_data.mach_vec[ind]);
+        self.aero_data.update_coeffs(self.vec_data.mach_vec[ind]);
 
         self.vec_data.cd[ind] = self.aero_data.get_cd(alpha);
         self.vec_data.cna[ind] = self.aero_data.get_cna(alpha);

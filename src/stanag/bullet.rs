@@ -70,7 +70,7 @@ impl Bullet {
 }
 
 impl OdeProblem<f64, 8> for Bullet {
-    fn odefun(&self, t: f64, y: SVector<f64, 8>) -> SVector<f64, 8> {
+    fn odefun(&self, _t: f64, y: SVector<f64, 8>) -> SVector<f64, 8> {
         let state = State(y);
         let mut dstate = State::default();
 
@@ -87,12 +87,14 @@ impl OdeProblem<f64, 8> for Bullet {
         );
 
         let (force, force_roll) = aero.actions(&self.coeffs);
-        let cor_acc = OMEGA
+        let cor_acc = -2.0
+            * OMEGA
             * Vector3::new(
                 self.position.latitude.cos() * self.position.azimut.cos(),
                 self.position.latitude.cos(),
                 -self.position.latitude.cos() * self.position.azimut.sin(),
-            );
+            )
+            .cross(&vel.clone_owned());
 
         let acc = force / self.geom.mass + gravity(pos) + cor_acc;
         let pdot = Vector1::new(force_roll / self.geom.in_x);

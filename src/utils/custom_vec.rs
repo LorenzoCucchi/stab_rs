@@ -1,4 +1,3 @@
-use ndarray::{ArrayD, IxDyn};
 use pyo3::prelude::*;
 use struct_iterable::Iterable;
 

@@ -1,4 +1,4 @@
-use hdf5::{File as Hdf5File, Selection};
+use hdf5::File as Hdf5File;
 use ndarray::Array;
 use pyo3::prelude::*;
 use serde_json::Value;

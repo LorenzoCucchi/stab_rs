@@ -1,10 +1,9 @@
 use core::f64;
 use std::f64::consts::PI;
 
-use hdf5::{File as Hdf5File, Selection};
+use hdf5::File as Hdf5File;
 use nalgebra::Vector3;
 use ndarray::Array;
-use pyo3::prelude::*;
 use serde_json::Value;
 use std::fs::File;
 use std::io::Read;
@@ -201,8 +200,7 @@ impl Aerodynamics {
         let mff = cy_int * self.roll_rate * (self.alpha_e.cross(&self.v_air_b)) * self.diameter;
 
         let f = (-cdf + lff - mff) * (PI * self.rho * self.diameter.powf(2.0) / 8.0);
-        let p =
-            -PI * self.rho * self.diameter.powf(4.0) * self.roll_rate * cllp * self.v_norm / 8.0;
+        let p = PI * self.rho * self.diameter.powf(4.0) * self.roll_rate * cllp * self.v_norm / 8.0;
 
         (f, p)
     }

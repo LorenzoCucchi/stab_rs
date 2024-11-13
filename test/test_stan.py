@@ -1,4 +1,3 @@
-import stab_rs.linear as linear # type: ignore
 import stab_rs.stanag as stanag # type: ignore
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,9 +16,12 @@ tot_len = lnose+lcentr+laft
 
 geomS = stanag.Geometry(tot_len, diam, ix, iy, xcg, 62)
 
-posS = stanag.Position(0,0,0,0.01,0)
+posS = stanag.Position(0,0.0,np.pi/2.0,0.01,0)
+
 simS = stanag.Simulation(geomS,"coeffs.json",posS,100.0,900.0,7.0,4.0)
 
 simS.run()
+
+simS.write_results()
 
 
