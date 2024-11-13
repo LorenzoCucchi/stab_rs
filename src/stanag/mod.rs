@@ -70,7 +70,7 @@ impl SimData {
 }
 
 #[pyclass]
-struct Position {
+pub struct Position {
     #[pyo3(get, set)]
     altitude: f64,
     #[pyo3(get, set)]
@@ -114,6 +114,8 @@ struct Simulation {
     #[pyo3(get, set)]
     geometry: Geometry,
     #[pyo3(get, set)]
+    position: Position,
+    #[pyo3(get, set)]
     range: f64,
     #[pyo3(get, set)]
     twist_rate: f64,
@@ -127,8 +129,6 @@ struct Simulation {
     iterations: usize,
     #[pyo3(get, set)]
     vec_data: SimData,
-    #[pyo3(get, set)]
-    position: Position,
     bullet: Bullet,
 }
 
@@ -144,7 +144,7 @@ impl Simulation {
         twist: f64,
         delta_yaw: f64,
     ) -> Self {
-        let bullet = Bullet::new(aero_path, geom.clone());
+        let bullet = Bullet::new(aero_path, geom.clone(), position.clone());
         Simulation {
             geometry: geom,
             range: range,
