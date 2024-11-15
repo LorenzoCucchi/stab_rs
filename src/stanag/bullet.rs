@@ -84,6 +84,7 @@ impl OdeProblem<f64, 8> for Bullet {
             self.alpha_e.clone_owned(),
             self.geom.diameter.clone(),
             self.geom.area.clone(),
+            state.pos().y,
         );
 
         let (force, force_roll) = aero.actions(&self.coeffs);

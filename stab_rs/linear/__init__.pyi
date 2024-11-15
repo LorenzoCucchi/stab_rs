@@ -1,26 +1,9 @@
 import numpy as np
-
+from geometry import Geometry
 
 class NamedVec:
     name: str
     data: np.ndarray
-
-
-class Geometry:
-    length: float
-    diameter: float
-    area: float
-    in_x: float
-    in_y: float
-    xcg: float
-    mass: float
-    mass_grain: float
-
-    def __init__(length: float, diameter: float, in_x: float, in_y: float,
-                 xcg: float, mass_grain: float) -> Geometry: ...
-
-    def print(self): ...
-
 
 class Aero:
     path: str

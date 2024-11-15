@@ -45,6 +45,12 @@ struct SimData {
     #[pyo3(get, set)]
     roll_rate: Vec<f64>,
     #[pyo3(get, set)]
+    alpha_e_1: Vec<f64>,
+    #[pyo3(get, set)]
+    alpha_e_2: Vec<f64>,
+    #[pyo3(get, set)]
+    alpha_e_3: Vec<f64>,
+    #[pyo3(get, set)]
     time: Vec<f64>,
 }
 
@@ -64,6 +70,9 @@ impl SimData {
             udot3: Vec::new(),
             roll: Vec::new(),
             roll_rate: Vec::new(),
+            alpha_e_1: Vec::new(),
+            alpha_e_2: Vec::new(),
+            alpha_e_3: Vec::new(),
             time: Vec::new(),
         }
     }
@@ -108,7 +117,6 @@ impl Clone for Position {
         }
     }
 }
-
 
 #[pyclass(module = "stab_rs.stanag")]
 struct Simulation {
@@ -193,6 +201,7 @@ impl Simulation {
                 self.bullet.alpha_e,
                 self.geometry.diameter,
                 self.geometry.area,
+                next.fixed_rows::<1>(1).clone_owned().x,
             );
 
             // calculate derivatives
@@ -241,6 +250,15 @@ impl Simulation {
                 self.vec_data
                     .udot3
                     .append(&mut vec![ode1.get(5).unwrap().clone()]);
+                self.vec_data
+                    .alpha_e_1
+                    .append(&mut vec![alpha_e.get(0).unwrap().clone()]);
+                self.vec_data
+                    .alpha_e_2
+                    .append(&mut vec![alpha_e.get(1).unwrap().clone()]);
+                self.vec_data
+                    .alpha_e_3
+                    .append(&mut vec![alpha_e.get(2).unwrap().clone()]);
                 self.vec_data.time.append(&mut vec![time]);
             }
         }

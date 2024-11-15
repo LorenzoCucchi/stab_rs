@@ -8,6 +8,8 @@ use serde_json::Value;
 use std::fs::File;
 use std::io::Read;
 
+use crate::utils::env::atmosisa;
+
 #[allow(nonstandard_style)]
 pub struct Coefficients {
     alpha: ndarray::Array1<f64>,
@@ -143,6 +145,7 @@ pub struct Aerodynamics {
     rho: f64,
     diameter: f64,
     surface: f64,
+    altitude: f64,
 }
 
 impl Aerodynamics {
@@ -153,6 +156,7 @@ impl Aerodynamics {
         alpha_e: Vector3<f64>,
         diameter: f64,
         surface: f64,
+        altitude: f64,
     ) -> Self {
         let v_air_b = v_b - v_wind_b;
         let v_norm = v_air_b.norm();
@@ -165,11 +169,13 @@ impl Aerodynamics {
             rho: 1.225,
             diameter,
             surface,
+            altitude,
         }
     }
 
     pub fn actions(&self, c: &Coefficients) -> (Vector3<f64>, f64) {
-        let mach = 2.0;
+        let (_, sound, _, _) = atmosisa(self.altitude);
+        let mach = self.v_norm / sound;
         let n = c.mach.len();
         let mut low_ind = 0;
         let mut upp_ind = n - 1;
@@ -206,7 +212,8 @@ impl Aerodynamics {
     }
 
     pub fn calc_alphae(&self, c: &Coefficients) -> Vector3<f64> {
-        let mach = 2.0;
+        let (_, sound, _, _) = atmosisa(self.altitude);
+        let mach = self.v_norm / sound;
         let n = c.mach.len();
         let mut low_ind = 0;
         let mut upp_ind = n - 1;
