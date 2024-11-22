@@ -73,7 +73,7 @@ class Simulation:
     vec_data: SimData
     aero_data: Aero
 
-    def __init__(geom: Geometry, aero_path: str, range: float, vel: float,
+    def __new__(geom: Geometry, aero_path: str, range: float, vel: float,
                  twist: float, delta_yaw: float, iter: int, temp: float, density: float) -> Simulation: ...
 
     def sound_speed(temp: float) -> float: ...
