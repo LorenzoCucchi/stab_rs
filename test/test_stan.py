@@ -17,9 +17,13 @@ tot_len = lnose+lcentr+laft
 
 geomS = geometry.Geometry(tot_len, diam, ix, iy, xcg, 62)
 
-posS = stanag.Position(0,0.0,np.pi/2.0,0.01,0)
+posS = stanag.Position(0,0.0,0,0.0,0)
 
-simS = stanag.Simulation(geomS,"coeffs.json",posS,100.0,900.0,7.0,4.0)
+posS.altitude = 0.0
+posS.azimut = 0.0
+posS.latitude = 0.0
+
+simS = stanag.Simulation(geomS,"coeffs.json",posS,100.0,800.0,7.0,4.0)
 
 simS.run()
 

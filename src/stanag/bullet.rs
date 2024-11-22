@@ -92,7 +92,7 @@ impl OdeProblem<f64, 8> for Bullet {
             * OMEGA
             * Vector3::new(
                 self.position.latitude.cos() * self.position.azimut.cos(),
-                self.position.latitude.cos(),
+                self.position.latitude.sin(),
                 -self.position.latitude.cos() * self.position.azimut.sin(),
             )
             .cross(&vel.clone_owned());
@@ -121,3 +121,4 @@ pub fn gravity(pos: Vector3<f64>) -> Vector3<f64> {
 }
 
 const OMEGA: f64 = 7.292115 * 10e-5;
+//const OMEGA: f64 = 0.0;

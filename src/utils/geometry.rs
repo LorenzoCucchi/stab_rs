@@ -1,3 +1,4 @@
+use nalgebra::Matrix3;
 use pyo3::prelude::*;
 use std::f64::consts::PI;
 
@@ -12,6 +13,8 @@ pub struct Geometry {
     pub xcg: f64,
     pub mass: f64,
     pub mass_grain: f64,
+    pub inertia: Matrix3<f64>,
+    pub inv_inertia: Matrix3<f64>,
 }
 
 #[pymethods]
@@ -27,6 +30,7 @@ impl Geometry {
     ) -> Self {
         let area = PI * diameter.powf(2.0) / 4.0;
         let mass = mass_grain / 15432.4;
+        let inertia: Matrix3<f64> = Matrix3::new(in_x, 0.0, 0.0, 0.0, in_y, 0.0, 0.0, 0.0, in_y);
         Geometry {
             length,
             diameter,
@@ -36,6 +40,8 @@ impl Geometry {
             xcg,
             mass,
             mass_grain,
+            inertia,
+            inv_inertia: inertia.try_inverse().unwrap(),
         }
     }
 
@@ -116,7 +122,6 @@ impl Geometry {
         println!("Mass Grain: {} [gr]", self.mass_grain);
     }
 }
-
 
 #[pymodule]
 fn geometry(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {

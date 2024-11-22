@@ -193,13 +193,13 @@ impl Aerodynamics {
         let cd_int: ndarray::Array1<f64> =
             &c.cd_fit.row(low_ind) + t * (&c.cd_fit.row(upp_ind) - &c.cd_fit.row(low_ind));
         let cn_int: ndarray::Array1<f64> =
-            &c.cd_fit.row(low_ind) + t * (&c.cd_fit.row(upp_ind) - &c.cd_fit.row(low_ind));
+            &c.cna_fit.row(low_ind) + t * (&c.cna_fit.row(upp_ind) - &c.cna_fit.row(low_ind));
         let cy_int: f64 = &c.cypa_fit[low_ind] + t * (&c.cypa_fit[upp_ind] - &c.cypa_fit[low_ind]);
         let cllp = &c.cllp_fit[low_ind] + t * (&c.cllp_fit[upp_ind] - &c.cllp_fit[low_ind]);
 
         let alpha = self.alpha_e.norm();
         let cd = cd_int[0] + cd_int[1] * alpha.powf(2.0) + cd_int[2] * alpha.powf(4.0);
-        let lf = cn_int[0] + cn_int[1] * alpha.powf(2.0) + cd_int[2] * alpha.powf(4.0);
+        let lf = cn_int[0] + cn_int[1] * alpha.powf(2.0) + cn_int[2] * alpha.powf(4.0);
 
         let cdf = cd * self.v_norm * self.v_air_b;
         let lff = lf * self.v_norm.powf(2.0) * self.alpha_e;
