@@ -315,7 +315,7 @@ impl Simulation {
         let eps: f64 = (1.0 - 1.0 / self.vec_data.sg_vec[0]).sqrt()
             * (self.delta_yaw.to_radians().sin())
             / (2.0 * (1.0 / inx_iny) - 1.0);
-
+        println!("{}?",eps);
         let xi0 = eps.sin() * j.exp();
         let xi0_prime = j * ((self.roll_rate * diam) / self.init_vel) * xi0;
 

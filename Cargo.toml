@@ -20,3 +20,5 @@ nalgebra = "*"
 pyo3-stub-gen = {version = "*"}
 env_logger = "0.11.5"
 approx = "0.5.1"
+rand = "*"
+rand_distr = "*"

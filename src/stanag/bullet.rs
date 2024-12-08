@@ -51,12 +51,13 @@ pub struct Bullet {
     pub geom: Geometry,
     pub state: State,
     pub alpha_e: Vector3<f64>,
+    pub coriolis: bool,
 }
 
 #[pymethods]
 impl Bullet {
     #[new]
-    pub fn new(path: String, geom: Geometry, pos: Position) -> Self {
+    pub fn new(path: String, geom: Geometry, pos: Position, coriolis: bool) -> Self {
         let coeffs = Coefficients::from_path(&path);
 
         Bullet {
@@ -65,6 +66,7 @@ impl Bullet {
             coeffs: coeffs,
             geom: geom,
             alpha_e: Vector3::zeros(),
+            coriolis: coriolis,
         }
     }
 }
@@ -88,14 +90,17 @@ impl OdeProblem<f64, 8> for Bullet {
         );
 
         let (force, force_roll) = aero.actions(&self.coeffs);
-        let cor_acc = -2.0
-            * OMEGA
-            * Vector3::new(
-                self.position.latitude.cos() * self.position.azimut.cos(),
-                self.position.latitude.sin(),
-                -self.position.latitude.cos() * self.position.azimut.sin(),
-            )
-            .cross(&vel.clone_owned());
+        let mut cor_acc = Vector3::zeros();
+        if self.coriolis {
+            cor_acc = -2.0
+                * OMEGA
+                * Vector3::new(
+                    self.position.latitude.cos() * self.position.azimut.cos(),
+                    self.position.latitude.sin(),
+                    -self.position.latitude.cos() * self.position.azimut.sin(),
+                )
+                .cross(&vel.clone_owned());
+        }
 
         let acc = force / self.geom.mass + gravity(pos) + cor_acc;
         let pdot = Vector1::new(force_roll / self.geom.in_x);

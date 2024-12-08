@@ -16,7 +16,7 @@ use crate::{
     write_datasets,
 };
 
-use bullet::{Bullet, State};
+use bullet::Bullet;
 use hdf5::File as Hdf5File;
 
 #[pyclass(module = "stab_rs.sixdof")]

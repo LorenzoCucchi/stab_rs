@@ -138,12 +138,15 @@ struct Simulation {
     iterations: usize,
     #[pyo3(get, set)]
     vec_data: SimData,
+    #[pyo3(get, set)]
+    coriolis: bool,
     bullet: Bullet,
 }
 
 #[pymethods]
 impl Simulation {
     #[new]
+    #[pyo3(signature = (geom, aero_path, position, range, vel, twist, delta_yaw, coriolis=None))]
     fn new(
         geom: Geometry,
         aero_path: String,
@@ -152,8 +155,10 @@ impl Simulation {
         vel: f64,
         twist: f64,
         delta_yaw: f64,
+        coriolis: Option<bool>,
     ) -> Self {
-        let bullet = Bullet::new(aero_path, geom.clone(), position.clone());
+        let cor = coriolis.unwrap_or(true);
+        let bullet = Bullet::new(aero_path, geom.clone(), position.clone(), cor.clone());
         Simulation {
             geometry: geom,
             range: range,
@@ -165,6 +170,7 @@ impl Simulation {
             iterations: 0,
             vec_data: SimData::new(),
             bullet: bullet,
+            coriolis: cor,
         }
     }
 
@@ -190,8 +196,9 @@ impl Simulation {
             .roll_rate_mut()
             .set_column(0, &Vector1::new(self.roll_rate));
 
+        let mut range = 0.0;
         let mut time = 0.0;
-        while time <= 3.0 {
+        while range <= self.range {
             let next = RungeKutta4.solve(&self.bullet, 0.0, 0.001, self.bullet.state.0);
 
             let aero = Aerodynamics::new(
@@ -205,13 +212,17 @@ impl Simulation {
             );
 
             // calculate derivatives
-            let ode1 = self.bullet.odefun(time, next);
+            let ode1 = self.bullet.odefun(0.0, next);
 
             // obtain and update alpha_e
             let alpha_e = aero.calc_alphae(&self.bullet.coeffs) * self.geometry.in_x;
             self.bullet.alpha_e = alpha_e.cross(&ode1.fixed_rows::<3>(3).clone_owned());
-
+            
             self.bullet.state.0 = next;
+
+            range = (next.get(0).unwrap().clone().powf(2.0)
+                + next.get(2).unwrap().clone().powf(2.0))
+            .sqrt();
 
             time += 0.001;
 
