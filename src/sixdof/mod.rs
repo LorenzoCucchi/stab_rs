@@ -10,6 +10,10 @@ use struct_iterable::Iterable;
 
 use crate::{
     utils::{
+        env::{
+            Turbulence::{self, *},
+            Wind,
+        },
         geometry::Geometry,
         ode::{OdeProblem, OdeSolver, RungeKutta4},
     },
@@ -72,6 +76,18 @@ struct SimData {
     #[pyo3(get, set)]
     beta: Vec<f64>,
     #[pyo3(get, set)]
+    wind_1: Vec<f64>,
+    #[pyo3(get, set)]
+    wind_2: Vec<f64>,
+    #[pyo3(get, set)]
+    wind_3: Vec<f64>,
+    #[pyo3(get, set)]
+    wind_gust_1: Vec<f64>,
+    #[pyo3(get, set)]
+    wind_gust_2: Vec<f64>,
+    #[pyo3(get, set)]
+    wind_gust_3: Vec<f64>,
+    #[pyo3(get, set)]
     time: Vec<f64>,
 }
 
@@ -101,6 +117,12 @@ impl SimData {
             r: Vec::new(),
             alpha: Vec::new(),
             beta: Vec::new(),
+            wind_1: Vec::new(),
+            wind_2: Vec::new(),
+            wind_3: Vec::new(),
+            wind_gust_1: Vec::new(),
+            wind_gust_2: Vec::new(),
+            wind_gust_3: Vec::new(),
             time: Vec::new(),
         }
     }
@@ -116,6 +138,8 @@ struct Simulation {
     #[pyo3(get, set)]
     geometry: Geometry,
     #[pyo3(get, set)]
+    wind: Wind,
+    #[pyo3(get, set)]
     twist_rate: f64,
     #[pyo3(get, set)]
     vec_data: SimData,
@@ -126,7 +150,7 @@ struct Simulation {
 #[pymethods]
 impl Simulation {
     #[new]
-    fn new(geom: Geometry, aero_path: String, dt: f64, ft: f64, twist: f64) -> Self {
+    fn new(geom: Geometry, aero_path: String, wind: Wind, dt: f64, ft: f64, twist: f64) -> Self {
         Simulation {
             dt: dt,
             ft: ft,
@@ -136,6 +160,7 @@ impl Simulation {
             bullet: Bullet::new(aero_path.clone(), geom.clone()),
             aeropath: aero_path,
             geometry: geom,
+            wind: wind,
         }
     }
 
@@ -146,6 +171,10 @@ impl Simulation {
     fn change_geometry(&mut self, geom: Geometry) {
         self.geometry = geom.clone();
         self.bullet.geom = geom;
+    }
+
+    fn change_wind(&mut self, wind: Wind) {
+        self.wind = wind;
     }
 
     fn init_state(
@@ -175,6 +204,8 @@ impl Simulation {
             .set_column(0, &Vector3::new(p, q, r));
 
         self.is_init = true;
+
+        self.wind.init_sixdof();
     }
 
     fn run(&mut self) {
@@ -201,9 +232,11 @@ impl Simulation {
                     q_nb.inverse_transform_vector(&next.fixed_rows::<3>(3).clone_owned());
                 let w_b: Vector3<f64> = next.fixed_rows::<3>(10).clone_owned();
 
+                let vel_wind_b: Vector3<f64> = q_nb.inverse_transform_vector(&self.wind.wind_vel);
+
                 let aero_result = aero.calc(&AeroState::new(
                     vel_b,
-                    Vector3::zeros(),
+                    vel_wind_b,
                     w_b.clone_owned(),
                     -next.fixed_rows::<3>(0)[2],
                 ));
@@ -214,6 +247,13 @@ impl Simulation {
 
                 self.bullet.state.0 = next;
                 self.bullet.state.normalize_quat();
+
+                self.wind.update_wind(
+                    self.bullet.state.vel_n().clone_owned().norm(),
+                    6.0,
+                );
+
+                self.bullet.wind = self.wind.wind_vel;
 
                 time += self.dt;
 
@@ -256,6 +296,28 @@ impl Simulation {
 
                     self.vec_data.alpha.append(&mut vec![aero_angle.y]);
                     self.vec_data.beta.append(&mut vec![aero_angle.z]);
+
+                    self.vec_data.wind_1.append(&mut vec![self
+                        .wind
+                        .wind_vel
+                        .get(0)
+                        .unwrap()
+                        .clone()]);
+                    self.vec_data.wind_2.append(&mut vec![self
+                        .wind
+                        .wind_vel
+                        .get(1)
+                        .unwrap()
+                        .clone()]);
+                    self.vec_data.wind_3.append(&mut vec![self
+                        .wind
+                        .wind_vel
+                        .get(2)
+                        .unwrap()
+                        .clone()]);
+                    self.vec_data.wind_gust_1.append(&mut vec![self.wind.u_old]);
+                    self.vec_data.wind_gust_2.append(&mut vec![self.wind.v_old]);
+                    self.vec_data.wind_gust_3.append(&mut vec![self.wind.w_old]);
 
                     self.vec_data.time.append(&mut vec![time]);
                 }

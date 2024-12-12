@@ -1,5 +1,6 @@
 import stab_rs.sixdof as sixdof  # type: ignore
 import stab_rs.geometry as geometry
+import stab_rs.wind as wind
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -36,11 +37,12 @@ tot_len = lnose+lcentr+laft
 
 geomS = geometry.Geometry(tot_len, diam, ix, iy, xcg, 62)
 
+windS = wind.Wind(10, np.pi/2.0, 0, 2, 0.00001, wind.Turbulence.MIL_8785)
 
-simS = sixdof.Simulation(geomS, "for006_coeffs.hdf5", 0.00001, 0.29, 8.0)
+simS = sixdof.Simulation(geomS, "for006_coeffs.hdf5", windS, 0.00001, 0.29, 8.0)
 
 vx, vy, vz, pitch, yaw, q, r = calc_state(
-    vel=800, rot=24730, pitch=0.11*np.pi/180.0, yaw=0.0, delta=0.1*np.pi/180.0, phase=225.0*np.pi/180)
+    vel=900, rot=24730, pitch=0.098*np.pi/180.0, yaw=0.0, delta=0.05*np.pi/180.0, phase=225.0*np.pi/180)
 
 print("Vx: ",vx," Vy: ",vy," Vz: ", vz)
 print("pitch: ",pitch," yaw: ",yaw)

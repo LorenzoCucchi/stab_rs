@@ -1,5 +1,6 @@
 import stab_rs.stanag as stanag  # type: ignore
 import stab_rs.geometry as geometry
+import stab_rs.wind as wind
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -17,15 +18,20 @@ tot_len = lnose+lcentr+laft
 
 geomS = geometry.Geometry(tot_len, diam, ix, iy, xcg, 62)
 
-posS = stanag.Position(0,0.0,np.pi/2,0.12*np.pi/180,0)
+windS = wind.Wind(10, np.pi/2.0, 0, 2, 0.0001, wind.Turbulence.CONST)
 
-posS.altitude = 0.0
+zero_seed = bytes([0] * 32)
+
+windS.fixed_seed(zero_seed, zero_seed, zero_seed)
+
+posS = stanag.Position(1.0, 0.0, 0.0, 0.098*np.pi/180, 0)
+
 posS.azimut = 0.0
 posS.latitude = 0.0
 
-simS = stanag.Simulation(geomS,"coeffs.json",posS,200.0,800.0,7.0,4.0,False)
+simS = stanag.Simulation(geomS, "coeffs.json", posS, windS, 0.0001,
+                         200.0, 900.0, 7.0, 4.0, False)
 
 simS.run()
 
 simS.write_results()
-

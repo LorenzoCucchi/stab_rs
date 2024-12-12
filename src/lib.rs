@@ -1,6 +1,7 @@
 use pyo3::prelude::*;
 use pyo3_stub_gen::define_stub_info_gatherer;
 use utils::geometry;
+use utils::env;
 
 mod linear;
 mod sixdof;
@@ -13,6 +14,7 @@ fn stab_rs(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     stanag::init_stanag(_py, m)?;
     sixdof::init_sixdof(_py, m)?;
     geometry::init_geometry(_py, m)?;
+    env::init_wind(_py, m)?;
 
     Ok(())
 }

@@ -6,3 +6,4 @@ from .linear import *
 from .stanag import *
 from .geometry import *
 from .sixdof import *
+from .wind import *

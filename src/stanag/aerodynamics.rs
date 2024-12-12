@@ -195,18 +195,20 @@ impl Aerodynamics {
         let cn_int: ndarray::Array1<f64> =
             &c.cna_fit.row(low_ind) + t * (&c.cna_fit.row(upp_ind) - &c.cna_fit.row(low_ind));
         let cy_int: f64 = &c.cypa_fit[low_ind] + t * (&c.cypa_fit[upp_ind] - &c.cypa_fit[low_ind]);
-        let cllp = &c.cllp_fit[low_ind] + t * (&c.cllp_fit[upp_ind] - &c.cllp_fit[low_ind]);
+        let cllp: f64 = &c.cllp_fit[low_ind] + t * (&c.cllp_fit[upp_ind] - &c.cllp_fit[low_ind]);
 
-        let alpha = self.alpha_e.norm();
-        let cd = cd_int[0] + cd_int[1] * alpha.powf(2.0) + cd_int[2] * alpha.powf(4.0);
-        let lf = cn_int[0] + cn_int[1] * alpha.powf(2.0) + cn_int[2] * alpha.powf(4.0);
+        let alpha: f64 = self.alpha_e.norm();
+        let cd: f64 = cd_int[0] + cd_int[1] * alpha.powf(2.0) + cd_int[2] * alpha.powf(4.0);
+        let lf: f64 = cn_int[0] + cn_int[1] * alpha.powf(2.0) + cn_int[2] * alpha.powf(4.0);
 
-        let cdf = cd * self.v_norm * self.v_air_b;
-        let lff = lf * self.v_norm.powf(2.0) * self.alpha_e;
-        let mff = cy_int * self.roll_rate * (self.alpha_e.cross(&self.v_air_b)) * self.diameter;
+        let cdf: Vector3<f64> = cd * self.v_norm * self.v_air_b;
+        let lff: Vector3<f64> = lf * self.v_norm.powf(2.0) * self.alpha_e;
+        let mff: Vector3<f64> =
+            cy_int * self.roll_rate * (self.alpha_e.cross(&self.v_air_b)) * self.diameter;
 
-        let f = (-cdf + lff - mff) * (PI * self.rho * self.diameter.powf(2.0) / 8.0);
-        let p = PI * self.rho * self.diameter.powf(4.0) * self.roll_rate * cllp * self.v_norm / 8.0;
+        let f: Vector3<f64> = (-cdf + lff - mff) * (PI * self.rho * self.diameter.powf(2.0) / 8.0);
+        let p: f64 =
+            PI * self.rho * self.diameter.powf(4.0) * self.roll_rate * cllp * self.v_norm / 8.0;
 
         (f, p)
     }
@@ -227,14 +229,43 @@ impl Aerodynamics {
         }
         let t = (mach - c.mach[low_ind]) / (c.mach[upp_ind] - c.mach[low_ind]);
 
-        let cma_int =
+        let cma_int: ndarray::Array1<f64> =
             &c.cma_fit.row(low_ind) + t * (&c.cma_fit.row(upp_ind) - &c.cma_fit.row(low_ind));
 
         let alpha = self.alpha_e.norm();
         let cma = cma_int[0] + cma_int[1] * alpha.powf(2.0) + cma_int[2] * alpha.powf(4.0);
+
         let alpha_e = -8.0 * self.roll_rate * self.v_air_b
             / (PI * self.rho * self.diameter.powf(3.0) * cma * self.v_norm.powf(4.0));
 
         alpha_e
+    }
+
+    pub fn calc_windjump(&self, c: &Coefficients, alpha_e: Vector3<f64>) -> f64 {
+        let (_, sound, _, _) = atmosisa(self.altitude);
+        let mach = self.v_norm / sound;
+        let n = c.mach.len();
+        let mut low_ind = 0;
+        let mut upp_ind = n - 1;
+
+        for i in 0..n - 1 {
+            if c.mach[i] <= mach && mach <= c.mach[i + 1] {
+                low_ind = i;
+                upp_ind = i + 1;
+                break;
+            }
+        }
+        let t = (mach - c.mach[low_ind]) / (c.mach[upp_ind] - c.mach[low_ind]);
+
+        let cma_int =
+            &c.cma_fit.row(low_ind) + t * (&c.cma_fit.row(upp_ind) - &c.cma_fit.row(low_ind));
+        let cn_int: ndarray::Array1<f64> =
+            &c.cna_fit.row(low_ind) + t * (&c.cna_fit.row(upp_ind) - &c.cna_fit.row(low_ind));
+
+        let alpha = alpha_e.norm();
+        let cma = cma_int[0] + cma_int[1] * alpha.powf(2.0) + cma_int[2] * alpha.powf(4.0);
+        let cna = cn_int[0] + cn_int[1] * alpha.powf(2.0) + cn_int[2] * alpha.powf(4.0);
+
+        return cna / (cma * self.diameter * self.v_norm.powf(2.0));
     }
 }

@@ -51,6 +51,7 @@ pub struct Bullet {
     pub geom: Geometry,
     pub state: State,
     pub alpha_e: Vector3<f64>,
+    pub wind: Vector3<f64>,
     pub coriolis: bool,
 }
 
@@ -65,6 +66,7 @@ impl Bullet {
             position: pos,
             coeffs: coeffs,
             geom: geom,
+            wind: Vector3::zeros(),
             alpha_e: Vector3::zeros(),
             coriolis: coriolis,
         }
@@ -81,7 +83,7 @@ impl OdeProblem<f64, 8> for Bullet {
 
         let aero = Aerodynamics::new(
             vel,
-            Vector3::zeros(),
+            self.wind,
             state.roll_rate().clone_owned().x,
             self.alpha_e.clone_owned(),
             self.geom.diameter.clone(),

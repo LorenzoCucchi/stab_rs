@@ -1,7 +1,7 @@
 import stab_rs  # Module for stability-related calculations
 import numpy as np  # For numerical and array operations
 from geometry import Geometry  # Geometry class to handle geometrical configurations
-
+from wind import Wind
 
 class Position:
     """

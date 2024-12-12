@@ -1,7 +1,7 @@
 import stab_rs
 import numpy as np
 from geometry import Geometry
-
+from wind import Wind
 
 class SimData:
     """
@@ -40,6 +40,7 @@ class SimData:
     r: np.ndarray
     alpha: np.ndarray
     beta: np.ndarray
+    
 
 
 class Simulation:
@@ -56,10 +57,11 @@ class Simulation:
     dt: float
     ft: float
     geometry: Geometry
+    wind: Wind
     twist_rate: float
     vec_data: SimData
 
-    def __new__(cls, geom: Geometry, aero_path: str, dt: float,
+    def __new__(cls, geom: Geometry, aero_path: str, wind: Wind, dt: float,
                 ft: float, twist: float):
         """
         Creates a new instance of the Simulation class.
@@ -67,6 +69,7 @@ class Simulation:
         Args:
             geom (Geometry): Geometrical configuration for the simulation.
             aero_path (str): Path to the aerodynamic data file.
+            wind (Wind): Wind configuration
             dt (float): Time step for the simulation.
             ft (float): Final time or duration of the simulation.
             twist (float): Twist rate for the simulation.

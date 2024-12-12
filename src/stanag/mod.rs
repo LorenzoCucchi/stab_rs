@@ -1,5 +1,9 @@
 use crate::{
     utils::{
+        env::{
+            Turbulence::{self, *},
+            Wind,
+        },
         geometry::Geometry,
         ode::{OdeProblem, OdeSolver, RungeKutta4},
     },
@@ -51,6 +55,18 @@ struct SimData {
     #[pyo3(get, set)]
     alpha_e_3: Vec<f64>,
     #[pyo3(get, set)]
+    wind_1: Vec<f64>,
+    #[pyo3(get, set)]
+    wind_2: Vec<f64>,
+    #[pyo3(get, set)]
+    wind_3: Vec<f64>,
+    #[pyo3(get, set)]
+    wind_gust_1: Vec<f64>,
+    #[pyo3(get, set)]
+    wind_gust_2: Vec<f64>,
+    #[pyo3(get, set)]
+    wind_gust_3: Vec<f64>,
+    #[pyo3(get, set)]
     time: Vec<f64>,
 }
 
@@ -73,6 +89,12 @@ impl SimData {
             alpha_e_1: Vec::new(),
             alpha_e_2: Vec::new(),
             alpha_e_3: Vec::new(),
+            wind_1: Vec::new(),
+            wind_2: Vec::new(),
+            wind_3: Vec::new(),
+            wind_gust_1: Vec::new(),
+            wind_gust_2: Vec::new(),
+            wind_gust_3: Vec::new(),
             time: Vec::new(),
         }
     }
@@ -125,6 +147,8 @@ struct Simulation {
     #[pyo3(get, set)]
     position: Position,
     #[pyo3(get, set)]
+    wind: Wind,
+    #[pyo3(get, set)]
     range: f64,
     #[pyo3(get, set)]
     twist_rate: f64,
@@ -140,17 +164,21 @@ struct Simulation {
     vec_data: SimData,
     #[pyo3(get, set)]
     coriolis: bool,
+    #[pyo3(get, set)]
+    dt: f64,
     bullet: Bullet,
 }
 
 #[pymethods]
 impl Simulation {
     #[new]
-    #[pyo3(signature = (geom, aero_path, position, range, vel, twist, delta_yaw, coriolis=None))]
+    #[pyo3(signature = (geom, aero_path, position, wind, dt, range, vel, twist, delta_yaw, coriolis=None))]
     fn new(
         geom: Geometry,
         aero_path: String,
         position: Position,
+        wind: Wind,
+        dt: f64,
         range: f64,
         vel: f64,
         twist: f64,
@@ -161,6 +189,8 @@ impl Simulation {
         let bullet = Bullet::new(aero_path, geom.clone(), position.clone(), cor.clone());
         Simulation {
             geometry: geom,
+            wind: wind,
+            dt: dt,
             range: range,
             twist_rate: twist,
             delta_yaw: delta_yaw,
@@ -183,6 +213,10 @@ impl Simulation {
         self.bullet.geom = geom;
     }
 
+    fn change_wind(&mut self, wind: Wind) {
+        self.wind = wind;
+    }
+
     fn run(&mut self) {
         let u0 = Vector3::new(
             self.position.quad_elev.cos() * self.position.delta_azi.cos(),
@@ -190,20 +224,27 @@ impl Simulation {
             self.position.quad_elev.cos() * self.position.delta_azi.sin(),
         ) * self.init_vel;
 
+        self.wind.init_stanag();
+        self.bullet.wind = self.wind.wind_vel;
+
         self.bullet.state.vel_mut().set_column(0, &u0);
         self.bullet
             .state
             .roll_rate_mut()
             .set_column(0, &Vector1::new(self.roll_rate));
+        self.bullet.state.pos_mut().y = self.position.altitude;
 
         let mut range = 0.0;
         let mut time = 0.0;
         while range <= self.range {
-            let next = RungeKutta4.solve(&self.bullet, 0.0, 0.001, self.bullet.state.0);
+            let mut next: nalgebra::SVector<f64, 8> =
+                RungeKutta4.solve(&self.bullet, 0.0, self.dt, self.bullet.state.0);
+
+            self.bullet.wind = self.wind.wind_vel;
 
             let aero = Aerodynamics::new(
                 next.fixed_rows::<3>(3).clone_owned(),
-                Vector3::zeros(),
+                self.wind.wind_vel,
                 next.fixed_rows::<1>(7).clone_owned().x,
                 self.bullet.alpha_e,
                 self.geometry.diameter,
@@ -212,19 +253,35 @@ impl Simulation {
             );
 
             // calculate derivatives
-            let ode1 = self.bullet.odefun(0.0, next);
+            let ode1: nalgebra::SVector<f64, 8> = self.bullet.odefun(0.0, next);
 
             // obtain and update alpha_e
-            let alpha_e = aero.calc_alphae(&self.bullet.coeffs) * self.geometry.in_x;
+            let alpha_e: Vector3<f64> = aero.calc_alphae(&self.bullet.coeffs) * self.geometry.in_x;
             self.bullet.alpha_e = alpha_e.cross(&ode1.fixed_rows::<3>(3).clone_owned());
-            
+
+            let delta_u = next.fixed_rows::<3>(3)
+                - (aero.calc_windjump(&self.bullet.coeffs, alpha_e)
+                    * self.geometry.in_x
+                    * next.get(7).unwrap().clone()
+                    * (next
+                        .fixed_rows::<3>(3)
+                        .cross(&(self.wind.wind_vel_old - self.wind.wind_vel))))
+                    / self.geometry.mass;
+
+            self.wind.update_wind(
+                next.fixed_rows::<3>(3).clone_owned().norm(),
+                next.get(1).unwrap().clone(),
+            );
+
+            next.fixed_rows_mut::<3>(3).set_column(0, &delta_u);
+
             self.bullet.state.0 = next;
 
             range = (next.get(0).unwrap().clone().powf(2.0)
                 + next.get(2).unwrap().clone().powf(2.0))
             .sqrt();
 
-            time += 0.001;
+            time += self.dt;
 
             // store data
             {
@@ -270,6 +327,18 @@ impl Simulation {
                 self.vec_data
                     .alpha_e_3
                     .append(&mut vec![alpha_e.get(2).unwrap().clone()]);
+                self.vec_data
+                    .wind_1
+                    .append(&mut vec![self.wind.wind_vel.get(0).unwrap().clone()]);
+                self.vec_data
+                    .wind_2
+                    .append(&mut vec![self.wind.wind_vel.get(1).unwrap().clone()]);
+                self.vec_data
+                    .wind_3
+                    .append(&mut vec![self.wind.wind_vel.get(2).unwrap().clone()]);
+                self.vec_data.wind_gust_1.append(&mut vec![self.wind.u_old]);
+                self.vec_data.wind_gust_2.append(&mut vec![self.wind.v_old]);
+                self.vec_data.wind_gust_3.append(&mut vec![self.wind.w_old]);
                 self.vec_data.time.append(&mut vec![time]);
             }
         }
@@ -285,6 +354,8 @@ impl Simulation {
 #[pymodule(module = "stab_rs.stanag")]
 fn stanag(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Geometry>()?;
+    m.add_class::<Wind>()?;
+    m.add_class::<Turbulence>()?;
     m.add_class::<Position>()?;
     m.add_class::<Simulation>()?;
     m.add_class::<SimData>()?;

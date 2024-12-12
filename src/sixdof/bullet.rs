@@ -1,9 +1,9 @@
 use nalgebra::{
-    Quaternion, SVector, Unit, UnitQuaternion, Vector3, Vector4, VectorView,
-    VectorViewMut, U1, U13, U3, U4,
+    Quaternion, SVector, Unit, UnitQuaternion, Vector3, Vector4, VectorView, VectorViewMut, U1,
+    U13, U3, U4,
 };
 
-use crate::utils::{geometry::Geometry, ode::OdeProblem};
+use crate::utils::{env::Wind, geometry::Geometry, ode::OdeProblem};
 
 use super::{
     aerodynamics::{AeroState, Aerodynamics, Coefficients},
@@ -60,11 +60,11 @@ impl State {
     }
 }
 
-
 pub struct Bullet {
     pub aerodynamics: Aerodynamics,
     pub geom: Geometry,
     pub state: State,
+    pub wind: Vector3<f64>,
 }
 
 impl Bullet {
@@ -77,6 +77,7 @@ impl Bullet {
             aerodynamics: aero,
             geom: geom,
             state: State::init(),
+            wind: Vector3::zeros(),
         }
     }
 }
@@ -92,7 +93,7 @@ impl OdeProblem<f64, 13> for Bullet {
 
         let aero = self.aerodynamics.calc(&AeroState::new(
             vel_b,
-            Vector3::zeros(),
+            q_nb.inverse_transform_vector(&self.wind),
             w_b.clone_owned(),
             -state.pos_n()[2],
         ));
