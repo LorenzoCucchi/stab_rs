@@ -24,13 +24,13 @@ zero_seed = bytes([0] * 32)
 
 windS.fixed_seed(zero_seed, zero_seed, zero_seed)
 
-posS = stanag.Position(1.0, 0.0, 0.0, 0.098*np.pi/180, 0)
+posS = stanag.Position(1.0, 0.0, 0.0, 0.4*np.pi/180, 0)
 
 posS.azimut = 0.0
 posS.latitude = 0.0
 
-simS = stanag.Simulation(geomS, "coeffs.json", posS, windS, 0.0001,
-                         200.0, 900.0, 7.0, 4.0, False)
+simS = stanag.Simulation(geomS, "coeffs_cfd.json", posS, windS, 0.0001,
+                         500.0, 900.0, 7.0, 4.0, False)
 
 simS.run()
 

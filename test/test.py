@@ -17,7 +17,7 @@ tot_len = lnose+lcentr+laft
 geom = linear.Geometry(tot_len, diam, ix, iy, xcg, 62)
 
 sim = linear.Simulation(
-    geom, "for006_coeffs.hdf5", 100, 800, 7, 3, 30000, 298, 1.225)
+    geom, "coeffs_cfd.json", 300, 900, 7.5, 2, 40000, 298, 1.225)
 
 sim.run()
 

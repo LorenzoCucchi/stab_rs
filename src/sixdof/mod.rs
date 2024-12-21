@@ -248,10 +248,9 @@ impl Simulation {
                 self.bullet.state.0 = next;
                 self.bullet.state.normalize_quat();
 
-                self.wind.update_wind(
-                    self.bullet.state.vel_n().clone_owned().norm(),
-                    6.0,
-                );
+                self.wind
+                    .update_wind(self.bullet.state.vel_n().clone_owned().norm(), 6.0);
+                // TODO: Fix wind model close to ground, boundary layer and checks
 
                 self.bullet.wind = self.wind.wind_vel;
 
